@@ -158,6 +158,8 @@ Anytime we alter our database, we need to perform a migration to make the change
 
 	$ heroku run rake db:migrate
 
+	$ rake db:migrate:status // check the status of your migrations
+
 ## 13. Managing our routes
 All our routes can be found by doing: 
 
@@ -268,6 +270,119 @@ In our resource.html.erb we want to conditionally show and hide edit and delete 
 	  <%= link_to 'Edit', edit_resource_path(resource) %>
 	  <%= link_to 'Destroy', resource, method: :delete, data: { confirm: 'Are you sure?' } %>
 	<% end %>
+
+## 18. Handling file uploads
+Maybe we want our users to be able to upload images or files?
+We'll use a popular gem called Paperclip for this https://github.com/thoughtbot/paperclip. A prereq is ImageMagick, so we'll need to install that too. http://cactuslab.com/imagemagick/
+
+To check if it's installed: 
+	
+	$ identify
+
+In our gem file, add paperclip:
+
+	gem 'paperclip', '~> 4.2'
+	OR
+	gem "paperclip", "~> 5.0.0.beta1"
+
+	$ bundle install
+	// restart server
+
+	$ rails generate paperclip resource image
+
+Edit your resource form: 
+
+	<%= form_for @resource, html: { multipart: true } do |f| %>
+	.
+	.
+	.
+	  <div class="form-group">
+	    <%= f.label :image %>
+	    <%= f.file_field :image, class: "form-control" %>
+	  </div>
+	.
+	.
+	.
+
+Update resource parameters to allow image: 
+
+	def resource_params
+      params.require(:resource).permit(:description, :image)
+    end
+
+To include an image in erb: 
+
+	<%= image_tag @resource.image.url(:medium) %>
+	// check out paperclips docs for more info on sizes
+
+We'll also need to set up Amazone Web services to handle our uploaded images, since we can't store them on Heroku.
+
+## 19. Adding Pagination
+
+Our resources might get to be too much to serve on one page. There's a pagination gem that can help us here:
+
+https://github.com/mislav/will_paginate#basic-will_paginate-use
+
+	gem 'will_paginate'
+	OR 
+	gem 'will_paginate-bootstrap'
+
+In our resources controller: 
+
+	def index
+	  @resources = Resource.all.order("created_at DESC").paginate(:page => params[:page], :per_page => 8)
+	end
+
+Render the pagination in our views: 
+
+	<%= will_paginate @resources %>
+	OR
+	<%= will_paginate @resources, renderer: BootstrapPagination::Rails %>
+
+20. Adding extra info to Users
+At some point, it may be a bit of a security risk to always show our user emails. We can add their name or a username to show instead. 
+
+	$ rails generate migration add_name_to_users name:string
+
+	$ rake db:migrate
+	AND 
+	$ heroku run rake db:migrate
+
+Edit the devise form so that Users have to enter a name when registering and editing their profile:
+
+	<div class="form-group">
+       <%= f.label :name %>
+       <%= f.text_field :name, class: "form-control", :autofocus => true %>
+     </div>
+
+In our application controller: 
+
+	class ApplicationController < ActionController::Base
+	 # Prevent CSRF attacks by raising an exception.
+	 # For APIs, you may want to use :null_session instead.
+	 protect_from_forgery with: :exception
+	 before_filter :configure_permitted_parameters, if: :devise_controller?
+
+	protected
+
+	 def configure_permitted_parameters
+	   devise_parameter_sanitizer.for(:sign_up) << :name
+	   devise_parameter_sanitizer.for(:account_update) << :name
+	 end
+	end
+
+In our views, where we were referenceing the user.email:
+
+	<%= resource.user.name if resource.user %>
+
+## 21. Validations
+
+Sometime we want to validate the data our users are putting in, both to make sure it exists, and to make sure it is the proper type or format. http://edgeguides.rubyonrails.org/active_record_validations.html
+
+In our model:
+
+	validates :name, presence: true
+
 
 
 
