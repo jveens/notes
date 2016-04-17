@@ -156,6 +156,8 @@ Anytime we alter our database, we need to perform a migration to make the change
 	$ rake db:migrate
 	// restart your server
 
+	$ heroku run rake db:migrate
+
 ## 13. Managing our routes
 All our routes can be found by doing: 
 
@@ -175,6 +177,100 @@ We want to be sure that our users can sign in or log up:
           <li><%= link_to "Sign in", new_user_session_path %></li>
         <% end %>
     </ul>
+
+## 14. Add a Scaffold to our Application
+
+A model represents whatever bits of data our application uses. Think of a Tweet in twitter, or a status update in Facebook. 
+
+We can manually create a Model and all the needed controller actions and paths, but Rails gives us a bit of 'Magic' to do this quickly:
+
+	$ rails generate scaffold < model_name_plural > < db_column:variable_type > 
+
+When we do this Rails generates a stylesheet for the scaffold, but we probably don't need it so feel free to delete it: _app/assets/stylesheets/scaffolds.css.scss_ Or just skip installing it altogether: 
+
+	$ rails generate scaffold < model_name_plural > < db_column:variable_type > --skip-stylesheets
+
+## 15. Associations
+
+At some point, we're going to want to associate the bits of our app together. For example, a user owns tweets and tweets belong to a user. 
+
+To do this, we need to add a column to our resource to store the user_id. 
+
+	class Tweet < ActiveRecord::Base
+		belongs_to :user
+	end
+
+	$ rails generate migration add_user_id_to_tweets user_id:integer:index
+
+	class User < ActiveRecord::Base
+	  # Include default devise modules. Others available are:
+	  # :token_authenticatable, :confirmable,
+	  # :lockable, :timeoutable and :omniauthable
+	  devise :database_authenticatable, :registerable,
+	         :recoverable, :rememberable, :trackable, :validatable
+
+	  has_many :tweets
+	end
+
+## 16. Rails Console
+
+The rails console can allow us to interact with our Database. It can be useful to find out what's going on with our app, and if things are going wrong it can help with debugging. 
+
+	$ rails console
+	$ rails c // shortform
+
+Let's check if our associations are working: 
+
+	$ Tweet.connection #Connect to the DB
+	$ Tweet.inspect #shows all of the parameters for a tweet 
+	$ tweet = Tweet.first #make sure Tweet.first is UPPERCASE
+	$ tweet.user
+
+
+	$ tweet = Tweet.first
+	$ tweet #Check out the tweet!
+	$ tweet.user_id = 1
+	$ tweet.save
+
+	$ user = User.first 
+	$ user.tweets
+
+	#Now we can call these methods
+	$ user.tweets
+	$ tweet.user
+
+## 17. Authorizations
+We probably want to add some authorizations to our apps. We want to lock down some parts for people who are logged in, and we want to allow people to use other parts of our app, even if they are not logged in (the homepage or sign up pages for example.)
+
+Add a before_action to lock down only specific pages:
+
+	before_action :authenticate_user!, except: [:index, :show]
+	before_action :correct_user, only: [:edit, :update, :destroy]
+
+Add a new private method to our cotroller that checks if it's the correct user:
+
+	def set_user
+      @resource = current_user.resources.find_by(id: params[:id])
+      redirect_to resources_path, notice: "Not authorized to edit this resource" if @resource.nil?
+    end
+
+In the resource view:
+	
+	<%= resource.user.email if resource.user %>
+	OR
+	<%= resource.user.try(:email) %>
+
+In our header partial, we'll want to conditionally show and hide links (ex. only show login link if not logged in, show logout link if already logged in).
+
+In our resource.html.erb we want to conditionally show and hide edit and delete links (only show these links if it's the user who owns them).
+
+	<% if resource.user == current_user %>
+	  <%= link_to 'Edit', edit_resource_path(resource) %>
+	  <%= link_to 'Destroy', resource, method: :delete, data: { confirm: 'Are you sure?' } %>
+	<% end %>
+
+
+
 
 
 
