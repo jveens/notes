@@ -13,6 +13,8 @@ The following commands create a new app based on a sqlite database.
 If we want to deploy to heroku, we will need to switch our production database to postgres or create with with postgres from the beginning: 
 
 	$ rails new < appname > --database=postgresql
+	
+Install PostgresApp to easily run a local PostGres server: http://postgresapp.com/documentation/
 
 ## 3. Run our rails server
 
